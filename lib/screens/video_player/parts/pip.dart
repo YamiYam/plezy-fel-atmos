@@ -60,6 +60,7 @@ extension _VideoPlayerPipMethods on VideoPlayerScreenState {
   /// opened already playing reports no later `playing` change for
   /// [_onPlayingStateChanged] to arm it from.
   void _armAutoPip(Player currentPlayer) {
+    if (currentPlayer.playerType == 'aether') return;
     if (!_autoPipEnabled) return;
 
     void autoPipEnteringCallback() {
@@ -78,7 +79,7 @@ extension _VideoPlayerPipMethods on VideoPlayerScreenState {
   Future<void> _togglePIPMode() async {
     if (!_pipInitialized) return;
 
-    final supported = await PipService.isSupported();
+    final supported = player?.playerType != 'aether' && await PipService.isSupported();
     if (!supported) {
       _onPipRequestFailed(t.videoControls.pipErrors.notSupported);
       return;
@@ -110,6 +111,7 @@ extension _VideoPlayerPipMethods on VideoPlayerScreenState {
   }
 
   Future<void> _updateAutoPipState({required bool isPlaying}) async {
+    if (player?.playerType == 'aether') return;
     if (!_pipInitialized) return;
 
     if (!isPlaying) {

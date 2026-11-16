@@ -90,6 +90,8 @@ class PerformanceStats {
   final int? dvAvgRpuConversionUs;
   final int? dvAvgSampleProcessingUs;
   final int? dvSourceProfile;
+  final String? dvEnhancementLayerType;
+  final bool dvFelCompositingActive;
   final String? dvPlaybackPath;
 
   /// Android mpv's Dolby Vision route; ExoPlayer reports [dvPlaybackPath] instead.
@@ -144,6 +146,8 @@ class PerformanceStats {
     this.dvAvgRpuConversionUs,
     this.dvAvgSampleProcessingUs,
     this.dvSourceProfile,
+    this.dvEnhancementLayerType,
+    this.dvFelCompositingActive = false,
     this.dvPlaybackPath,
     this.dvRoute,
     this.appMemoryBytes,
@@ -269,6 +273,7 @@ class PerformanceStats {
 
   /// Format hardware decoding mode.
   String get hwdecFormatted {
+    if (playerType == 'aether') return videoDecoderName ?? t.common.notAvailable;
     // For ExoPlayer, use the decoder name
     if (videoDecoderName != null && videoDecoderName!.isNotEmpty) {
       // Check if it's a hardware decoder (contains OMX, c2, or MediaCodec patterns)
@@ -308,24 +313,32 @@ class PerformanceStats {
 
   String get dvConversionFormatted => dvConversionMode == 'DV81' ? '7→8.1' : '7→HEVC';
 
-  String get dvSourceProfileFormatted => dvSourceProfile == null ? t.common.notAvailable : 'P$dvSourceProfile';
+  String get dvSourceProfileFormatted {
+    if (dvSourceProfile == null) return t.common.notAvailable;
+    if (playerType == 'aether' && dvSourceProfile == 7) {
+      return 'P7 ${dvEnhancementLayerType ?? t.common.unknown}';
+    }
+    return 'P$dvSourceProfile';
+  }
 
   /// Format Dolby Vision playback path. mpv's base layer is named by the
   /// transfer it decodes to, so a P8.1 fallback reads as HDR10 (#2534).
-  String get dvPlaybackPathFormatted => switch (dvRoute) {
-    DvRoute.dvDecoder => t.performanceOverlay.dvRouteDecoder,
-    DvRoute.dvDecoderP81 => t.performanceOverlay.dvRouteDecoderP81,
-    DvRoute.reshaped => t.performanceOverlay.dvRouteReshaped,
-    DvRoute.baseLayer => switch (gamma) {
-      'pq' => t.performanceOverlay.dvRouteBaseLayerHdr10,
-      'hlg' => t.performanceOverlay.dvRouteBaseLayerHlg,
-      null || '' || 'auto' => t.performanceOverlay.dvRouteBaseLayer,
-      _ => t.performanceOverlay.dvRouteBaseLayerSdr,
-    },
-    null => dvPlaybackPath ?? t.common.notAvailable,
-  };
+  String get dvPlaybackPathFormatted => dvFelCompositingActive
+      ? 'FEL (BL + EL)'
+      : switch (dvRoute) {
+          DvRoute.dvDecoder => t.performanceOverlay.dvRouteDecoder,
+          DvRoute.dvDecoderP81 => t.performanceOverlay.dvRouteDecoderP81,
+          DvRoute.reshaped => t.performanceOverlay.dvRouteReshaped,
+          DvRoute.baseLayer => switch (gamma) {
+            'pq' => t.performanceOverlay.dvRouteBaseLayerHdr10,
+            'hlg' => t.performanceOverlay.dvRouteBaseLayerHlg,
+            null || '' || 'auto' => t.performanceOverlay.dvRouteBaseLayer,
+            _ => t.performanceOverlay.dvRouteBaseLayerSdr,
+          },
+          null => dvPlaybackPath ?? t.common.notAvailable,
+        };
 
-  bool get hasDvPlaybackPath => dvRoute != null || dvPlaybackPath != null;
+  bool get hasDvPlaybackPath => dvFelCompositingActive || dvRoute != null || dvPlaybackPath != null;
 
   String get dvRpuCountFormatted {
     final converted = dvConvertedRpus ?? 0;
@@ -418,6 +431,7 @@ class PerformanceStats {
     return switch (playerType.toLowerCase()) {
       'mpv' => 'MPV',
       'exoplayer' => 'ExoPlayer',
+      'aether' => 'Aether',
       _ => playerType,
     };
   }

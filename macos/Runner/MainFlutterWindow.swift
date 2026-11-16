@@ -31,6 +31,11 @@ class MainFlutterWindow: NSWindow {
     MpvAudioPlayerPlugin.register(
       with: flutterViewController.registrar(forPlugin: "MpvAudioPlayerPlugin"))
 
+    if #available(macOS 26, *) {
+      NativePlaybackPlugin.register(
+        with: flutterViewController.registrar(forPlugin: "NativePlaybackPlugin"))
+    }
+
     WindowUtilsPlugin.register(
       with: flutterViewController.registrar(forPlugin: "WindowUtilsPlugin"))
     WindowUtilsPlugin.setWindow(self)

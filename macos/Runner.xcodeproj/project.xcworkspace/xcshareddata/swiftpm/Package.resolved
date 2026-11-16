@@ -1,6 +1,41 @@
 {
   "pins" : [
     {
+      "identity" : "aetherengine",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/superuser404notfound/AetherEngine",
+      "state" : {
+        "revision" : "29943fdccd1fb900f3414219440a32094eb3e410"
+      }
+    },
+    {
+      "identity" : "ffmpegbuild",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/superuser404notfound/FFmpegBuild",
+      "state" : {
+        "revision" : "d445e6daa180db73f12d47606a00c914f682e278",
+        "version" : "3.15.0"
+      }
+    },
+    {
+      "identity" : "libdovi",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/superuser404notfound/LibDovi",
+      "state" : {
+        "revision" : "caff700968700467c089a3f38c8b4180620518b5",
+        "version" : "2.2.0"
+      }
+    },
+    {
+      "identity" : "libtruehd",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/superuser404notfound/LibTrueHD",
+      "state" : {
+        "revision" : "12b26e487a2ade918e53380d47f5727883fedafc",
+        "version" : "3.2.0"
+      }
+    },
+    {
       "identity" : "mpv-build",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/edde746/mpv-build",
@@ -15,6 +50,15 @@
       "state" : {
         "revision" : "f196cbb98e0388381d57908f2f5a9bdc385cde68",
         "version" : "8.58.4"
+      }
+    },
+    {
+      "identity" : "smbclient",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kishikawakatsumi/SMBClient",
+      "state" : {
+        "revision" : "e636c2b2458930770932a36d311ec9d478575b90",
+        "version" : "0.3.1"
       }
     }
   ],

@@ -10,6 +10,7 @@ import 'player_state.dart';
 import 'player_streams.dart';
 import 'platform/player_linux.dart';
 import 'platform/player_windows.dart';
+import 'platform/player_macos_native.dart';
 import 'video_decoder_hold.dart';
 
 export 'player_base.dart';
@@ -420,6 +421,9 @@ abstract class Player {
         return PlayerAndroid(); // ExoPlayer (opt-in)
       }
       return PlayerNative(hardwareDecoding: hardwareDecoding); // MPV (default)
+    }
+    if (Platform.isMacOS && PlayerMacOSNative.enabled) {
+      return PlayerMacOSNative();
     }
     if (Platform.isMacOS || Platform.isIOS) {
       return PlayerNative();

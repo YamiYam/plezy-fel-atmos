@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:plezy/focus/focusable_button.dart';
 import 'package:plezy/providers/playback_state_provider.dart';
 import 'package:plezy/mpv/mpv.dart';
+import 'package:plezy/mpv/player/platform/player_macos_native.dart';
 import 'package:plezy/media/media_source_info.dart';
 import 'package:plezy/services/playback_coordinator.dart';
 import 'package:plezy/services/playback_subtitle_resolver.dart';
@@ -349,6 +351,40 @@ void main() {
     );
     expect(decided.declinedPreference, isNull);
   });
+
+  testWidgets('native initialization ignores the mpv passthrough preference', (tester) async {
+    final settings = await SettingsService.getInstance();
+    await settings.write(SettingsService.audioPassthrough, true);
+    var configuredVolume = false;
+    final volumeApplied = Completer<void>();
+    await withMockPlayerChannels(
+      methodChannelName: 'com.plezy/native_playback',
+      eventChannelName: 'com.plezy/native_playback/events',
+      methodHandler: (call) async {
+        if (call.method == 'initialize') return true;
+        if (call.method == 'setVolume') {
+          configuredVolume = true;
+          await volumeApplied.future;
+        }
+        return null;
+      },
+      testBody: () async {
+        try {
+          await tester.pumpWidget(_screen(GlobalKey<VideoPlayerScreenState>()));
+          await pumpUntil(tester, () => configuredVolume);
+          expect(configuredVolume, true);
+          expect(settings.read(SettingsService.audioPassthrough), true);
+        } finally {
+          await tester.pumpWidget(const SizedBox.shrink());
+          if (!volumeApplied.isCompleted) volumeApplied.complete();
+          var retired = false;
+          final retirement = PlaybackCoordinator.instance.shutdownVideo().whenComplete(() => retired = true);
+          await pumpUntil(tester, () => retired);
+          await retirement;
+        }
+      },
+    );
+  }, skip: !Platform.isMacOS || !PlayerMacOSNative.enabled);
 
   testWidgets('initialization ownership serializes rollback, retry, and route removal', (tester) async {
     final failedDispose = Completer<void>();

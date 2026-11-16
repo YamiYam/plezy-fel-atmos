@@ -1888,166 +1888,184 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
 
       if (!_isPlayerInitializationCurrent(generation)) return;
       initPhase = 'configuring player';
-      await currentPlayer.configureSubtitleFonts();
-      await currentPlayer.setProperty('sub-ass', 'yes'); // Enable libass
-      if (Platform.isAndroid && useExoPlayer) {
-        final tunneledPlayback = settingsService.read(SettingsService.tunneledPlayback);
-        await currentPlayer.setProperty('tunneled-playback', tunneledPlayback ? 'yes' : 'no');
-        await currentPlayer.setProperty('exo-buffer-tier', playbackBufferTier.nativeValue);
-      }
-      if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
-        final dvConversionMode = settingsService.read(SettingsService.dvConversionMode);
-        await currentPlayer.setProperty('dv-conversion-mode', dvConversionMode.nativeValue);
-      }
-      // Before the first file, so its opening route is already decided: a
-      // later write would start it on one renderer and move it to the other.
-      if (Platform.isAndroid && !useExoPlayer) {
-        final hdrSdrConversion = settingsService.read(SettingsService.hdrSdrConversion);
-        await currentPlayer.setProperty('hdr-sdr-conversion', hdrSdrConversion.nativeValue);
-      }
-      // Also before the first file: Android mpv picks the decoder per file
-      // before it opens, and tvOS asks the TV for a mode at the first frame.
-      if ((Platform.isAndroid && !useExoPlayer) || PlatformDetector.isAppleTV()) {
-        final disableDolbyVision = settingsService.read(SettingsService.disableDolbyVision);
-        await currentPlayer.setProperty('dolby-vision-output', disableDolbyVision ? 'no' : 'yes');
-      }
-      if (Platform.isIOS || Platform.isMacOS) {
-        await currentPlayer.setProperty('dv-conversion-log', debugLoggingEnabled ? 'yes' : 'no');
-      }
-      // Android demuxer memory is owned natively: MpvPlayerCore caps its
-      // demuxer cache off the device heap class at init (DemuxerBudget), and
-      // ExoPlayer's LoadControlPolicy derives its own target the same way.
-      // requestAudioFocus initializes Android players, so start it only after
-      // init-time ExoPlayer options above have been cached.
-      if (Platform.isAndroid && !widget.isLive) {
-        _audioFocusFuture = currentPlayer.requestAudioFocus();
-        _audioFocusFuture!.ignore();
-      }
-      await currentPlayer.setProperty('msg-level', debugLoggingEnabled ? 'all=debug,ffmpeg/video=warn' : 'all=error');
-      if (!Platform.isAndroid) {
-        await currentPlayer.setLogLevel(debugLoggingEnabled ? 'v' : 'warn');
-      }
-      await currentPlayer.setProperty('hwdec', _getHwdecValue(enableHardwareDecoding));
-
-      // Deinterlacing (#2149, #2710) is mpv-only by design — ExoPlayer has no
-      // filter chain. Both modes act only on content flagged interlaced. Live
-      // TV keeps plain deinterlacing under Film: broadcast mixes telecined
-      // film with sports and news shot at field rate, which inverse telecine
-      // makes stutter. Wrapped: a preference must never abort player
-      // initialization (a core that rejects the value keeps its default).
-      final deinterlaceMode = settingsService.read(SettingsService.deinterlaceMode);
-      if (!(Platform.isAndroid && useExoPlayer) && deinterlaceMode != DeinterlaceMode.off) {
-        final applied = widget.isLive && deinterlaceMode == DeinterlaceMode.film
-            ? DeinterlaceMode.video
-            : deinterlaceMode;
-        try {
-          await currentPlayer.setProperty('deinterlace', applied.mpvValue);
-        } catch (e) {
-          appLogger.w('VideoPlayerScreen: deinterlace not applied', error: e);
+      if (currentPlayer.playerType == 'aether') {
+        await currentPlayer.configureSubtitleFonts();
+        await currentPlayer.setProperty('hwdec', _getHwdecValue(enableHardwareDecoding));
+        await currentPlayer.setProperty(
+          'dv-conversion-mode',
+          settingsService.read(SettingsService.dvConversionMode).nativeValue,
+        );
+        appLogger.w('Experimental FEL/object-audio playback: mpv configuration and PiP are unavailable.');
+      } else {
+        await currentPlayer.configureSubtitleFonts();
+        await currentPlayer.setProperty('sub-ass', 'yes'); // Enable libass
+        if (Platform.isAndroid && useExoPlayer) {
+          final tunneledPlayback = settingsService.read(SettingsService.tunneledPlayback);
+          await currentPlayer.setProperty('tunneled-playback', tunneledPlayback ? 'yes' : 'no');
+          await currentPlayer.setProperty('exo-buffer-tier', playbackBufferTier.nativeValue);
         }
-      }
-
-      // Subtitle styling is a preference, never a reason to fail playback.
-      // mpv 0.40's OPT_COLOR parser accepts only #RRGGBB/#AARRGGBB (or
-      // r/g/b/a floats), so a stored colour that does not parse would make
-      // mpv refuse the write - and, unwrapped, that refusal aborts player
-      // initialization on every open. Values are sanitized first, and
-      // whatever is left is a logged warning with mpv keeping its own
-      // default styling.
-      try {
-        await currentPlayer.setProperty(
-          'sub-font-size',
-          settingsService.read(SettingsService.subtitleFontSize).toString(),
-        );
-        await currentPlayer.setProperty(
-          'sub-color',
-          _sanitizedSubtitleColor(
-            settingsService.read(SettingsService.subtitleTextColor),
-            SettingsService.subtitleTextColor.defaultValue,
-          ),
-        );
-        await currentPlayer.setProperty(
-          'sub-border-size',
-          settingsService.read(SettingsService.subtitleBorderSize).toString(),
-        );
-        await currentPlayer.setProperty(
-          'sub-border-color',
-          _sanitizedSubtitleColor(
-            settingsService.read(SettingsService.subtitleBorderColor),
-            SettingsService.subtitleBorderColor.defaultValue,
-          ),
-        );
-        await currentPlayer.setProperty('sub-bold', settingsService.read(SettingsService.subtitleBold) ? 'yes' : 'no');
-        await currentPlayer.setProperty(
-          'sub-italic',
-          settingsService.read(SettingsService.subtitleItalic) ? 'yes' : 'no',
-        );
-        final bgOpacity = (settingsService.read(SettingsService.subtitleBackgroundOpacity) * 255 / 100).toInt();
-        final bgColor = _sanitizedSubtitleColor(
-          settingsService.read(SettingsService.subtitleBackgroundColor),
-          SettingsService.subtitleBackgroundColor.defaultValue,
-        ).replaceFirst('#', '');
-        await currentPlayer.setProperty(
-          'sub-back-color',
-          '#${bgOpacity.toRadixString(16).padLeft(2, '0').toUpperCase()}$bgColor',
-        );
-        if (settingsService.read(SettingsService.subtitleBackgroundOpacity) > 0) {
-          await currentPlayer.setProperty('sub-border-style', 'background-box');
+        if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
+          final dvConversionMode = settingsService.read(SettingsService.dvConversionMode);
+          await currentPlayer.setProperty('dv-conversion-mode', dvConversionMode.nativeValue);
         }
-      } catch (e) {
-        appLogger.w('VideoPlayerScreen: subtitle styling not applied', error: e);
-      }
-      // ASS policy and placement are preferences too. `sub-ass-video-aspect-
-      // override` only exists from mpv 0.39 (libmpv 2.4): a runner linked
-      // against a distro libmpv 2.2 (mpv 0.37, Ubuntu 24.04) refuses it with
-      // MPV_ERROR_PROPERTY_NOT_FOUND, and unwrapped that refusal was a failed
-      // initialization whose Retry failed the same way. Each write is
-      // contained on its own so one refusal does not skip the others.
-      for (final (name, value) in [
-        ('sub-ass-override', settingsService.read(SettingsService.subAssOverride).name),
-        ('sub-ass-video-aspect-override', '1'),
-        ('sub-pos', settingsService.read(SettingsService.subtitlePosition).toString()),
-      ]) {
-        try {
-          await currentPlayer.setProperty(name, value);
-        } catch (e) {
-          appLogger.w('VideoPlayerScreen: $name not applied', error: e);
+        // Before the first file, so its opening route is already decided: a
+        // later write would start it on one renderer and move it to the other.
+        if (Platform.isAndroid && !useExoPlayer) {
+          final hdrSdrConversion = settingsService.read(SettingsService.hdrSdrConversion);
+          await currentPlayer.setProperty('hdr-sdr-conversion', hdrSdrConversion.nativeValue);
         }
-      }
+        // Also before the first file: Android mpv picks the decoder per file
+        // before it opens, and tvOS asks the TV for a mode at the first frame.
+        if ((Platform.isAndroid && !useExoPlayer) || PlatformDetector.isAppleTV()) {
+          final disableDolbyVision = settingsService.read(SettingsService.disableDolbyVision);
+          await currentPlayer.setProperty('dolby-vision-output', disableDolbyVision ? 'no' : 'yes');
+        }
+        if (Platform.isIOS || Platform.isMacOS) {
+          await currentPlayer.setProperty('dv-conversion-log', debugLoggingEnabled ? 'yes' : 'no');
+        }
+        // Android demuxer memory is owned natively: MpvPlayerCore caps its
+        // demuxer cache off the device heap class at init (DemuxerBudget), and
+        // ExoPlayer's LoadControlPolicy derives its own target the same way.
+        // requestAudioFocus initializes Android players, so start it only after
+        // init-time ExoPlayer options above have been cached.
+        if (Platform.isAndroid && !widget.isLive) {
+          _audioFocusFuture = currentPlayer.requestAudioFocus();
+          _audioFocusFuture!.ignore();
+        }
+        await currentPlayer.setProperty('msg-level', debugLoggingEnabled ? 'all=debug,ffmpeg/video=warn' : 'all=error');
+        if (!Platform.isAndroid) {
+          await currentPlayer.setLogLevel(debugLoggingEnabled ? 'v' : 'warn');
+        }
+        await currentPlayer.setProperty('hwdec', _getHwdecValue(enableHardwareDecoding));
 
-      // Placement policy is MPV-only and independent of ASS styling. Keep the
-      // last accepted/default value on refusal; custom mpv.conf still wins below.
-      if (!(Platform.isAndroid && useExoPlayer)) {
+        // Deinterlacing (#2149, #2710) is mpv-only by design — ExoPlayer has no
+        // filter chain. Both modes act only on content flagged interlaced. Live
+        // TV keeps plain deinterlacing under Film: broadcast mixes telecined
+        // film with sports and news shot at field rate, which inverse telecine
+        // makes stutter. Wrapped: a preference must never abort player
+        // initialization (a core that rejects the value keeps its default).
+        final deinterlaceMode = settingsService.read(SettingsService.deinterlaceMode);
+        if (!(Platform.isAndroid && useExoPlayer) && deinterlaceMode != DeinterlaceMode.off) {
+          final applied = widget.isLive && deinterlaceMode == DeinterlaceMode.film
+              ? DeinterlaceMode.video
+              : deinterlaceMode;
+          try {
+            await currentPlayer.setProperty('deinterlace', applied.mpvValue);
+          } catch (e) {
+            appLogger.w('VideoPlayerScreen: deinterlace not applied', error: e);
+          }
+        }
+
+        // Subtitle styling is a preference, never a reason to fail playback.
+        // mpv 0.40's OPT_COLOR parser accepts only #RRGGBB/#AARRGGBB (or
+        // r/g/b/a floats), so a stored colour that does not parse would make
+        // mpv refuse the write - and, unwrapped, that refusal aborts player
+        // initialization on every open. Values are sanitized first, and
+        // whatever is left is a logged warning with mpv keeping its own
+        // default styling.
         try {
           await currentPlayer.setProperty(
-            'sub-use-margins',
-            settingsService.read(SettingsService.subtitleUseMargins) ? 'yes' : 'no',
+            'sub-font-size',
+            settingsService.read(SettingsService.subtitleFontSize).toString(),
           );
+          await currentPlayer.setProperty(
+            'sub-color',
+            _sanitizedSubtitleColor(
+              settingsService.read(SettingsService.subtitleTextColor),
+              SettingsService.subtitleTextColor.defaultValue,
+            ),
+          );
+          await currentPlayer.setProperty(
+            'sub-border-size',
+            settingsService.read(SettingsService.subtitleBorderSize).toString(),
+          );
+          await currentPlayer.setProperty(
+            'sub-border-color',
+            _sanitizedSubtitleColor(
+              settingsService.read(SettingsService.subtitleBorderColor),
+              SettingsService.subtitleBorderColor.defaultValue,
+            ),
+          );
+          await currentPlayer.setProperty(
+            'sub-bold',
+            settingsService.read(SettingsService.subtitleBold) ? 'yes' : 'no',
+          );
+          await currentPlayer.setProperty(
+            'sub-italic',
+            settingsService.read(SettingsService.subtitleItalic) ? 'yes' : 'no',
+          );
+          final bgOpacity = (settingsService.read(SettingsService.subtitleBackgroundOpacity) * 255 / 100).toInt();
+          final bgColor = _sanitizedSubtitleColor(
+            settingsService.read(SettingsService.subtitleBackgroundColor),
+            SettingsService.subtitleBackgroundColor.defaultValue,
+          ).replaceFirst('#', '');
+          await currentPlayer.setProperty(
+            'sub-back-color',
+            '#${bgOpacity.toRadixString(16).padLeft(2, '0').toUpperCase()}$bgColor',
+          );
+          if (settingsService.read(SettingsService.subtitleBackgroundOpacity) > 0) {
+            await currentPlayer.setProperty('sub-border-style', 'background-box');
+          }
         } catch (e) {
-          appLogger.w('VideoPlayerScreen: subtitle margins not applied', error: e);
+          appLogger.w('VideoPlayerScreen: subtitle styling not applied', error: e);
+        }
+        // ASS policy and placement are preferences too. `sub-ass-video-aspect-
+        // override` only exists from mpv 0.39 (libmpv 2.4): a runner linked
+        // against a distro libmpv 2.2 (mpv 0.37, Ubuntu 24.04) refuses it with
+        // MPV_ERROR_PROPERTY_NOT_FOUND, and unwrapped that refusal was a failed
+        // initialization whose Retry failed the same way. Each write is
+        // contained on its own so one refusal does not skip the others.
+        for (final (name, value) in [
+          ('sub-ass-override', settingsService.read(SettingsService.subAssOverride).name),
+          ('sub-ass-video-aspect-override', '1'),
+          ('sub-pos', settingsService.read(SettingsService.subtitlePosition).toString()),
+        ]) {
+          try {
+            await currentPlayer.setProperty(name, value);
+          } catch (e) {
+            appLogger.w('VideoPlayerScreen: $name not applied', error: e);
+          }
+        }
+
+        // Placement policy is MPV-only and independent of ASS styling. Keep the
+        // last accepted/default value on refusal; custom mpv.conf still wins below.
+        if (!(Platform.isAndroid && useExoPlayer)) {
+          try {
+            await currentPlayer.setProperty(
+              'sub-use-margins',
+              settingsService.read(SettingsService.subtitleUseMargins) ? 'yes' : 'no',
+            );
+          } catch (e) {
+            appLogger.w('VideoPlayerScreen: subtitle margins not applied', error: e);
+          }
+        }
+
+        if (Platform.isIOS) {
+          await currentPlayer.setProperty('audio-exclusive', 'yes');
+        }
+
+        if (Platform.isIOS || Platform.isMacOS) {
+          // Rasterize subtitles at the video's resolution instead of the
+          // display's; the OSD layer upscales them with the video.
+          await currentPlayer.setProperty(
+            'avfoundation-osd-video-res',
+            settingsService.read(SettingsService.subtitleRenderResolution) == SubtitleRenderResolution.video
+                ? 'yes'
+                : 'no',
+          );
         }
       }
 
-      if (Platform.isIOS) {
-        await currentPlayer.setProperty('audio-exclusive', 'yes');
-      }
-
-      if (Platform.isIOS || Platform.isMacOS) {
-        // Rasterize subtitles at the video's resolution instead of the
-        // display's; the OSD layer upscales them with the video.
-        await currentPlayer.setProperty(
-          'avfoundation-osd-video-res',
-          settingsService.read(SettingsService.subtitleRenderResolution) == SubtitleRenderResolution.video
-              ? 'yes'
-              : 'no',
-        );
-      }
-
-      // Audio passthrough (Windows/Linux, Android TV, and Apple TV, where the
-      // native sample-buffer renderer handles AC3/EAC3, including JOC metadata;
-      // never macOS — see PlatformDetector.supportsAudioPassthrough).
+      // The native FEL backend renders objects instead of handing off a bitstream.
       if (PlatformDetector.supportsAudioPassthrough()) {
-        await currentPlayer.setAudioPassthrough(settingsService.read(SettingsService.audioPassthrough));
+        final passthrough = settingsService.read(SettingsService.audioPassthrough);
+        if (currentPlayer.playerType == 'aether') {
+          if (passthrough) {
+            appLogger.i('Native playback uses object-audio rendering; the mpv passthrough preference is not applied.');
+          }
+        } else {
+          await currentPlayer.setAudioPassthrough(passthrough);
+        }
       }
 
       // Set before hdr-enabled so the first image description is already built
@@ -2154,12 +2172,12 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
         );
       }
 
-      if (PlatformDetector.isDesktopOS()) {
+      if (PlatformDetector.isDesktopOS() && currentPlayer.playerType != 'aether') {
         await currentPlayer.setProperty('screenshot-directory', '~/Pictures');
       }
 
       // Before custom mpv.conf, so an `audio-device` line there still wins.
-      if (!(Platform.isAndroid && useExoPlayer)) {
+      if (!(Platform.isAndroid && useExoPlayer) && currentPlayer.playerType != 'aether') {
         await applyPreferredAudioDevice(currentPlayer, settingsService.read(SettingsService.audioOutputDevice));
       }
 

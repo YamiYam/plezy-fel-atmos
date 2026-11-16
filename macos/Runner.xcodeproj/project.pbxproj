@@ -21,6 +21,9 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		F37000000000000000000006 /* PlezyNativePlayback in Bundle Framework */ = {isa = PBXBuildFile; productRef = F37000000000000000000004 /* PlezyNativePlayback */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		F37000000000000000000001 /* NativePlaybackPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37000000000000000000002 /* NativePlaybackPlugin.swift */; };
+		F37000000000000000000003 /* PlezyNativePlayback in Frameworks */ = {isa = PBXBuildFile; productRef = F37000000000000000000004 /* PlezyNativePlayback */; };
 		28A54CB9141D0CB5BB3C2E50 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F93D3355F7A242CE67311F7 /* Pods_Runner.framework */; };
 		331C80D8294CF71000263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C80D7294CF71000263BE5 /* RunnerTests.swift */; };
 		335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */; };
@@ -70,6 +73,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				F37000000000000000000006 /* PlezyNativePlayback in Bundle Framework */,
 			);
 			name = "Bundle Framework";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -77,6 +81,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F37000000000000000000002 /* NativePlaybackPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePlaybackPlugin.swift; sourceTree = "<group>"; };
 		10C0002C657183E0886559B6 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		2BF8F34B75C7EEBFABBAFB4A /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		331C80D5294CF71000263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -133,6 +138,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F37000000000000000000003 /* PlezyNativePlayback in Frameworks */,
 				78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */,
 				6AB6B0952EDB27C100EAC8DB /* MPVKit in Frameworks */,
 				28A54CB9141D0CB5BB3C2E50 /* Pods_Runner.framework in Frameworks */,
@@ -223,6 +229,7 @@
 			children = (
 				33CC10F02044A3C60003C045 /* AppDelegate.swift */,
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
+				F37000000000000000000002 /* NativePlaybackPlugin.swift */,
 				6AD8B1682ED7B50000E9E1B5 /* WindowUtilsPlugin.swift */,
 				6AD8B1712ED7B50000E9E1C1 /* AppLookupPlugin.swift */,
 				7278E9E14CBE2D57031E91BE /* DeepLinkDeliveryCoordinator.swift */,
@@ -286,6 +293,7 @@
 		};
 		33CC10EC2044A3C60003C045 /* Runner */ = {
 			packageProductDependencies = (
+				F37000000000000000000004 /* PlezyNativePlayback */,
 				78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */,
 			);
 			isa = PBXNativeTarget;
@@ -350,6 +358,7 @@
 			);
 			mainGroup = 33CC10E42044A3C60003C045;
 			packageReferences = (
+				F37000000000000000000005 /* XCLocalSwiftPackageReference "NativePlayback" */,
 				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage" */,
 				6AB6B0932EDB27C100EAC8DB /* XCRemoteSwiftPackageReference "mpv-build" */,
 			);
@@ -499,6 +508,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */,
+				F37000000000000000000001 /* NativePlaybackPlugin.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 				B1D51A6A2F00110000000003 /* MpvPlayerCoreBase.swift in Sources */,
@@ -631,7 +641,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -723,7 +733,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -773,7 +783,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -913,6 +923,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		F37000000000000000000004 /* PlezyNativePlayback */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlezyNativePlayback;
+		};
 		6AB6B0942EDB27C100EAC8DB /* MPVKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 6AB6B0932EDB27C100EAC8DB /* XCRemoteSwiftPackageReference "mpv-build" */;
@@ -924,6 +938,10 @@
 		};
 /* End XCSwiftPackageProductDependency section */
 /* Begin XCLocalSwiftPackageReference section */
+		F37000000000000000000005 /* XCLocalSwiftPackageReference "NativePlayback" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = NativePlayback;
+		};
 		781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage;

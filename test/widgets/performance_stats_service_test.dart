@@ -334,5 +334,44 @@ void main() {
       expect(stats.dvSourceProfile, 8);
       expect(stats.hasDvPlaybackPath, isFalse);
     });
+
+    test('Aether distinguishes FEL source metadata from confirmed reconstruction', () async {
+      for (final active in [false, true]) {
+        final stats = await _firstStats(
+          _NativeStatsPlayer({
+            'playerType': 'aether',
+            'dvSourceProfile': 7,
+            'dvEnhancementLayerType': 'FEL',
+            'dvFelCompositingActive': active,
+            'videoDecoderName': 'VideoToolbox HEVC (HW)',
+          }),
+        );
+        expect(stats.playerTypeFormatted, 'Aether');
+        expect(stats.dvSourceProfileFormatted, 'P7 FEL');
+        expect(stats.hasDvPlaybackPath, active);
+        if (active) expect(stats.dvPlaybackPathFormatted, 'FEL (BL + EL)');
+        expect(stats.hwdecFormatted, 'VideoToolbox HEVC (HW)');
+      }
+    });
+
+    test('Aether reports MEL and its actual base-layer route without guessing unknown types', () async {
+      final mel = await _firstStats(
+        _NativeStatsPlayer({
+          'playerType': 'aether',
+          'dvSourceProfile': 7,
+          'dvEnhancementLayerType': 'MEL',
+          'dvPlaybackPath': 'HDR10 (BL)',
+        }),
+      );
+      expect(mel.dvSourceProfileFormatted, 'P7 MEL');
+      expect(mel.dvPlaybackPathFormatted, 'HDR10 (BL)');
+      for (final type in [null, 'unrecognized']) {
+        final unknown = await _firstStats(
+          _NativeStatsPlayer({'playerType': 'aether', 'dvSourceProfile': 7, 'dvEnhancementLayerType': type}),
+        );
+        expect(unknown.dvSourceProfileFormatted, 'P7 ${t.common.unknown}');
+        expect(unknown.hasDvPlaybackPath, false);
+      }
+    });
   });
 }

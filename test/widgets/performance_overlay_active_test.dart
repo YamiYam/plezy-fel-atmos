@@ -6,6 +6,7 @@ import 'package:plezy/widgets/video_controls/widgets/performance_overlay/perform
 /// Player fake that only counts how often the overlay polls it.
 class _CountingStatsPlayer implements Player {
   int statsCalls = 0;
+  Map<String, dynamic> stats = {'playerType': 'mpv', 'demuxer-cache-state': '{"fw-bytes":12582912}'};
 
   @override
   final PlayerStreams streams = const PlayerStreams(
@@ -39,7 +40,7 @@ class _CountingStatsPlayer implements Player {
   @override
   Future<Map<String, dynamic>> getStats() async {
     statsCalls++;
-    return {'playerType': 'mpv', 'demuxer-cache-state': '{"fw-bytes":12582912}'};
+    return stats;
   }
 
   @override
@@ -75,6 +76,39 @@ void main() {
 
     expect(player.statsCalls, whileVisible);
 
+    await tester.pumpWidget(wrap(const SizedBox.shrink()));
+  });
+
+  testWidgets('DV rows update from FEL to MEL and disappear for a non-DV file', (tester) async {
+    final player = _CountingStatsPlayer()
+      ..stats = {
+        'playerType': 'aether',
+        'dvSourceProfile': 7,
+        'dvEnhancementLayerType': 'FEL',
+        'dvFelCompositingActive': true,
+      };
+    await tester.pumpWidget(wrap(PlayerPerformanceOverlay(player: player, active: true)));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('P7 FEL'), findsOneWidget);
+    expect(find.text('FEL (BL + EL)'), findsOneWidget);
+
+    player.stats = {
+      'playerType': 'aether',
+      'dvSourceProfile': 7,
+      'dvEnhancementLayerType': 'MEL',
+      'dvPlaybackPath': 'HDR10 (BL)',
+    };
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+    expect(find.text('P7 MEL'), findsOneWidget);
+    expect(find.text('HDR10 (BL)'), findsOneWidget);
+    expect(find.text('FEL (BL + EL)'), findsNothing);
+
+    player.stats = {'playerType': 'aether'};
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+    expect(find.text('P7 MEL'), findsNothing);
+    expect(find.text('HDR10 (BL)'), findsNothing);
     await tester.pumpWidget(wrap(const SizedBox.shrink()));
   });
 }

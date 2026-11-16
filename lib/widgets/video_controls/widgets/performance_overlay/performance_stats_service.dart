@@ -118,9 +118,7 @@ class PerformanceStatsService {
       }
 
       if (player.providesNativeStats) {
-        // Android (ExoPlayer or MPV fallback): the native side returns
-        // appropriate stats based on which backend is active.
-        await _fetchAndroidStats();
+        await _fetchNativeStats();
       } else {
         // For mpv-channel players, use MPV property queries
         await _fetchMpvStats();
@@ -132,9 +130,8 @@ class PerformanceStatsService {
     }
   }
 
-  /// Fetch stats from Android player (ExoPlayer or MPV fallback).
-  /// The native side returns appropriate stats based on the active backend.
-  Future<void> _fetchAndroidStats() async {
+  /// Native stats from ExoPlayer, its mpv fallback, or the macOS Aether backend.
+  Future<void> _fetchNativeStats() async {
     final statsMap = await player.getStats();
     final playerType = statsMap['playerType'] as String? ?? 'unknown';
 
@@ -200,9 +197,9 @@ class PerformanceStatsService {
       );
       _emit(stats);
     } else {
-      // Parse ExoPlayer stats format
+      // ExoPlayer and Aether use camel-case metric names.
       final stats = PerformanceStats(
-        playerType: 'exoplayer',
+        playerType: playerType == 'aether' ? 'aether' : 'exoplayer',
         // Video metrics
         videoCodec: _formatVideoCodecName((statsMap['videoCodec'] ?? statsMap['videoMimeType']) as String?),
         videoWidth: statsMap['videoWidth'] as int?,
@@ -233,6 +230,12 @@ class PerformanceStatsService {
         dvAvgRpuConversionUs: (statsMap['dvAvgRpuConversionUs'] as num?)?.toInt(),
         dvAvgSampleProcessingUs: (statsMap['dvAvgSampleProcessingUs'] as num?)?.toInt(),
         dvSourceProfile: (statsMap['dvSourceProfile'] as num?)?.toInt(),
+        dvEnhancementLayerType: switch (statsMap['dvEnhancementLayerType']) {
+          'FEL' => 'FEL',
+          'MEL' => 'MEL',
+          _ => null,
+        },
+        dvFelCompositingActive: statsMap['dvFelCompositingActive'] == true,
         dvPlaybackPath: statsMap['dvPlaybackPath'] as String?,
         // App metrics
         appMemoryBytes: appMemory,

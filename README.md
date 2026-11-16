@@ -5,6 +5,66 @@
 
 A modern client for Plex, Jellyfin, and Emby on desktop, mobile, and TV. Built with Flutter for native performance and a clean interface.
 
+## Experimental macOS FEL / TrueHD Atmos fork
+
+This fork adds an **opt-in, experimental playback backend** for Apple Silicon Macs on macOS 26+.
+It pins [AetherEngine](https://github.com/superuser404notfound/AetherEngine/tree/29943fdccd1fb900f3414219440a32094eb3e410)
+with its `DualLayerDolbyVision` and `TrueHDObjectAudio` traits enabled together. The standard
+build still uses mpv. This fork's macOS deployment floor is now 15 because the linked engine
+requires it; the experimental backend requires macOS 26. Upstream downloads below do **not**
+contain this backend.
+
+After following the normal Flutter/macOS prerequisites, build from this directory:
+
+```sh
+flutter pub get
+flutter build macos --release --dart-define=PLEZY_MACOS_NATIVE=true
+# Omit the dart-define to use mpv instead.
+swift test --package-path macos/NativePlayback
+```
+
+The app is `build/macos/Build/Products/Release/Plezy.app`. Use Release for playback testing:
+the unoptimized Swift spatial-audio renderer in Debug can run below real time and repeatedly
+starve the player even when the network is fast enough.
+Xcode/SwiftPM downloads the pinned native
+dependencies. `PlezyNativePlayback` must remain a separately embedded dynamic framework:
+its FFmpeg references must resolve to `AetherLibavcodec`, not mpv's static FFmpeg.
+
+- Use direct-play, seekable UHD MKV remuxes with hardware decoding, HDR and Dolby Vision set
+  to automatic. Disabling any of those disables the requested FEL route. Server transcoding
+  cannot preserve a FEL layer or TrueHD object metadata that it has removed.
+- The engine requests real BL+FEL composition, **not** curve folding. Its composed output is
+  dithered to 10-bit P010 with Profile 8.1 metadata. A Profile 7 source badge or `felRequested`
+  diagnostic is not proof that composition ran. Mac display-management metadata consumption
+  remains unverified; this is not Dolby-certified output.
+- TrueHD objects are requested as a rendered APAC 7.1.4 bed. **APAC is lossy**; this is neither
+  lossless TrueHD passthrough nor discrete overhead playback from laptop speakers. Object activity,
+  actual audio delivery and audible built-in-speaker spatialization require separate testing.
+- Experimental limitations: no live TV, PiP, arbitrary mpv settings, audio normalization,
+  forced downmix, amplification above 100%, custom zoom, or per-app audio-device selection.
+  macOS's default output device is used. Embedded/sidecar text and bitmap subtitles are supported;
+  styled text is flattened rather than rendered with libass.
+  The shared mpv audio-passthrough preference is ignored by this backend without changing the saved setting.
+- Native statistics expose the requested features, decoder names, audio-delivery classification
+  and object activity when available. They deliberately report `displayManagementVerified: false`.
+  The performance overlay's **DV Source** row distinguishes `P7 MEL` and `P7 FEL`;
+  **DV Path** shows `FEL (BL + EL)` only after the compositor reports completed frames.
+  An unclassified enhancement layer reads `Unknown`, not MEL. These diagnostics describe source
+  and reconstruction, not certified Dolby Vision display output. The pinned engine's structured
+  diagnostics supply MEL/FEL and compositor counts because its public API does not expose them.
+  A missing audio pipeline is an error, not a successful silent-video fallback.
+  Engine diagnostics are available in Console under subsystem `de.superuser404.AetherEngine`;
+  verify the selected dual-layer decoder/compositor there rather than inferring it from a badge.
+- Release playback testing has observed completed FEL compositor frames and active TrueHD Atmos
+  object rendering on an Apple Silicon Mac. This is a playback smoke test, not a validation of
+  reconstruction accuracy, Atmos conformance or HDR presentation. Broader fixture-based testing
+  is still needed. Use the mpv build for unsupported playback.
+
+Before distributing a build, review the engine and all bundled decoder licenses, corresponding-source
+obligations and any applicable Dolby patent/licensing requirements. This fork does not grant Dolby
+certification or codec patent licenses. Keep `ENABLE_UPDATE_CHECK` disabled: the upstream update feed
+would replace this experimental fork with an upstream release.
+
 <p>
   <a href="https://plezy.app">Website</a> ·
   <a href="https://plezy.app/#screenshots">Screenshots</a> ·

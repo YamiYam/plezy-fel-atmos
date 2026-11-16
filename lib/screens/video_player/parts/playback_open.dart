@@ -784,6 +784,7 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     required bool isTranscoding,
     required MediaVersion? selectedVersion,
   }) async {
+    if (player.playerType == 'aether') return;
     final hysteresis = demuxerHysteresisSecs(
       uncachedLocalFile: isLocalMedia && readsUncachedLocalFile(videoUrl, platform: defaultTargetPlatform),
       customMpvConfig: _appliedCustomMpvConfig,
